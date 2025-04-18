@@ -25,6 +25,7 @@ export type Trade = {
 type TradingContextType = {
   portfolio: Portfolio;
   trades: Trade[];
+  setTrades: React.Dispatch<React.SetStateAction<Trade[]>>;
   watchlist: string[];
   executeTrade: (
     commodity: string,
@@ -41,7 +42,9 @@ const defaultPortfolio: Portfolio = {
   positions: [],
 };
 
-const TradingContext = createContext<TradingContextType | undefined>(undefined);
+export const TradingContext = createContext<TradingContextType | undefined>(
+  undefined
+);
 
 export function TradingProvider({ children }: { children: React.ReactNode }) {
   const [portfolio, setPortfolio] = useState<Portfolio>(defaultPortfolio);
@@ -189,6 +192,7 @@ export function TradingProvider({ children }: { children: React.ReactNode }) {
       value={{
         portfolio,
         trades,
+        setTrades,
         watchlist,
         executeTrade,
         addToWatchlist,

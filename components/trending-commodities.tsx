@@ -1,103 +1,103 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { useState, useEffect, useRef } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { getMarketData, type MarketDataItem } from "@/app/actions/market-data";
 
-// Direct API key as requested
-const API_KEY = "ZdsATtS7ITMl0Jw9nasGRg==XHKt6DQQQi1dMImo"
+// Top trending commodities to filter from market data
+const TRENDING_SYMBOLS = ["GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER"];
 
-// Top trending commodities
-const TRENDING_COMMODITIES = [
-  { id: "1", name: "gold", displayName: "Gold", category: "metals" },
-  { id: "2", name: "silver", displayName: "Silver", category: "metals" },
-  { id: "3", name: "crude_oil", displayName: "Crude Oil", category: "energy" },
-  { id: "4", name: "natural_gas", displayName: "Natural Gas", category: "energy" },
-  { id: "5", name: "copper", displayName: "Copper", category: "metals" },
-]
+// Utility to apply ±0.1% random fluctuation
+function applyFluctuation(price: number): number {
+  const fluctuation = price * 0.001;
+  const randomFactor = (Math.random() * 2 - 1) * fluctuation;
+  return parseFloat((price + randomFactor).toFixed(2));
+}
 
 export function TrendingCommodities() {
-  const [commodities, setCommodities] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [commodities, setCommodities] = useState<MarketDataItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const previousPricesRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const trendingData = []
+        const data = await getMarketData();
+        const allCommodities = Object.values(data).flat();
 
-        // Fetch each commodity individually
-        for (const commodity of TRENDING_COMMODITIES) {
-          try {
-            const response = await fetch(`https://api.api-ninjas.com/v1/commodityprice?name=${commodity.name}`, {
-              headers: {
-                "X-Api-Key": API_KEY,
-              },
-            })
+        // Store current prices for comparison
+        const currentPrices: Record<string, number> = {};
+        allCommodities.forEach((item) => {
+          currentPrices[item.symbol] = item.price;
+        });
 
-            if (!response.ok) {
-              throw new Error(`API Error: ${response.status}`)
-            }
+        // Filter and apply fluctuations to trending commodities
+        const trendingData = allCommodities
+          .filter((item) => TRENDING_SYMBOLS.includes(item.symbol))
+          .map((item) => {
+            const newPrice = applyFluctuation(item.price);
+            const prevPrice =
+              previousPricesRef.current[item.symbol] || item.price;
+            const priceChange = ((newPrice - prevPrice) / prevPrice) * 100;
 
-            const data = await response.json()
-            const apiData = data[0]
+            return {
+              ...item,
+              price: newPrice,
+              change: priceChange,
+            };
+          })
+          .sort((a, b) => b.volume - a.volume);
 
-            if (apiData) {
-              trendingData.push({
-                ...commodity,
-                price: apiData.price,
-                change: (Math.random() * 2 - 1) * 5, // Random change for demo
-                percentChange: (Math.random() * 2 - 1) * 3, // Random percent change for demo
-                volume: Math.floor(Math.random() * 10000) + 1000, // Random volume for demo
-                currency: apiData.currency,
-              })
-            }
-          } catch (error) {
-            console.error(`Failed to fetch ${commodity.name}:`, error)
-
-            // Use mock data if API fails
-            trendingData.push({
-              ...commodity,
-              price: Math.random() * 1000 + 100,
-              change: (Math.random() * 2 - 1) * 5,
-              percentChange: (Math.random() * 2 - 1) * 3,
-              volume: Math.floor(Math.random() * 10000) + 1000,
-              currency: "USD",
-            })
-          }
-        }
-
-        // Sort by volume (highest first)
-        trendingData.sort((a, b) => b.volume - a.volume)
-
-        setCommodities(trendingData)
+        previousPricesRef.current = currentPrices;
+        setCommodities(trendingData);
       } catch (error) {
-        console.error("Failed to fetch trending commodities:", error)
+        console.error("Failed to fetch market data:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchData()
-  }, [])
+    fetchData();
+    // Update every 15 seconds instead of 5 seconds
+    const intervalId = setInterval(fetchData, 15000);
+    return () => clearInterval(intervalId);
+  }, []); // Remove previousPrices dependency
 
-  const formatPrice = (price: number, currency: string) => {
-    if (currency === "USD") {
-      const conversionRate = 82; // Example conversion rate from USD to INR
-      price = price * conversionRate;
-      currency = "INR";
+  // Get price change class for animations
+  const getPriceChangeClass = (symbol: string, currentPrice: number) => {
+    const prevPrice = previousPricesRef.current[symbol] || currentPrice;
+    if (currentPrice > prevPrice) {
+      return "bg-green-500/10 transition-colors duration-1000";
     }
+    if (currentPrice < prevPrice) {
+      return "bg-red-500/10 transition-colors duration-1000";
+    }
+    return "";
+  };
+
+  const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: currency,
+      currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(price);
   };
 
   if (loading) {
-    return <div className="py-4 text-center">Loading trending commodities...</div>
+    return (
+      <div className="py-4 text-center">Loading trending commodities...</div>
+    );
   }
 
   return (
@@ -113,28 +113,45 @@ export function TrendingCommodities() {
       </TableHeader>
       <TableBody>
         {commodities.map((commodity) => (
-          <TableRow key={commodity.id}>
-            <TableCell className="font-medium">{commodity.displayName}</TableCell>
+          <TableRow key={`${commodity.symbol}-${commodity.name}`}>
+            <TableCell className="font-medium">{commodity.name}</TableCell>
             <TableCell>
               <Badge variant="outline" className="capitalize">
-                {commodity.category}
+                {commodity.name.includes("GOLD") ||
+                commodity.name.includes("SILVER") ||
+                commodity.name.includes("COPPER")
+                  ? "metals"
+                  : "energy"}
               </Badge>
             </TableCell>
-            <TableCell className="text-right">{formatPrice(commodity.price, commodity.currency)}</TableCell>
-            <TableCell className={`text-right ${commodity.percentChange >= 0 ? "text-green-500" : "text-red-500"}`}>
+            <TableCell
+              className={`text-right ${getPriceChangeClass(
+                commodity.symbol,
+                commodity.price
+              )}`}
+            >
+              {formatPrice(commodity.price)}
+            </TableCell>
+            <TableCell
+              className={`text-right ${
+                commodity.change >= 0 ? "text-green-500" : "text-red-500"
+              }`}
+            >
               <div className="flex items-center justify-end">
-                {commodity.percentChange >= 0 ? (
+                {commodity.change >= 0 ? (
                   <ArrowUp className="mr-1 h-3 w-3" />
                 ) : (
                   <ArrowDown className="mr-1 h-3 w-3" />
                 )}
-                {Math.abs(commodity.percentChange).toFixed(2)}%
+                {Math.abs(commodity.change).toFixed(2)}%
               </div>
             </TableCell>
-            <TableCell className="text-right">{commodity.volume.toLocaleString()}</TableCell>
+            <TableCell className="text-right">
+              {commodity.volume.toLocaleString()}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
-  )
+  );
 }

@@ -25,7 +25,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useTradingContext } from "@/context/trading-context";
-import { getCommodityPrice } from "@/app/actions/commodity-actions";
+import { getCommodityPriceFromMarketData } from "@/app/actions/market-data";
 
 const formSchema = z.object({
   commodity: z.string().min(1, "Commodity is required"),
@@ -41,25 +41,29 @@ const formSchema = z.object({
 
 // List of available commodities
 const commodities = [
-  { value: "gold", label: "Gold (10g)" },
-  { value: "silver", label: "Silver (10g)" },
-  { value: "copper", label: "Copper (kg)" },
-  { value: "aluminium", label: "Aluminium (kg)" },
-  { value: "lead", label: "Lead (kg)" },
-  { value: "zinc", label: "Zinc (kg)" },
-  { value: "nickel", label: "Nickel (kg)" },
-  { value: "crudeoil", label: "Crude Oil (barrel)" },
-  { value: "naturalgas", label: "Natural Gas (MMBtu)" },
-  { value: "brent", label: "Brent Crude (barrel)" },
-  { value: "heatingoil", label: "Heating Oil (barrel)" },
-  { value: "cotton", label: "Cotton (bale)" },
-  { value: "soybean", label: "Soybean (kg)" },
-  { value: "wheat", label: "Wheat (kg)" },
-  { value: "corn", label: "Corn (kg)" },
-  { value: "sugar", label: "Sugar (kg)" },
-  { value: "rubber", label: "Rubber (kg)" },
-  { value: "menthaoil", label: "Mentha Oil (kg)" },
-  { value: "cpo", label: "CPO (kg)" },
+  // Metals
+  { value: "GOLD", label: "Gold (10g)" },
+  { value: "SILVER", label: "Silver (10g)" },
+  { value: "COPPER", label: "Copper (kg)" },
+  { value: "ALUMINIUM", label: "Aluminium (kg)" },
+  { value: "LEAD", label: "Lead (kg)" },
+  { value: "ZINC", label: "Zinc (kg)" },
+  { value: "NICKEL", label: "Nickel (kg)" },
+  // Energy
+  { value: "CRUDEOIL", label: "Crude Oil (barrel)" },
+  { value: "NATURALGAS", label: "Natural Gas (MMBtu)" },
+  { value: "BRENT", label: "Brent Crude (barrel)" },
+  { value: "HEATINGOIL", label: "Heating Oil (barrel)" },
+  // Agriculture
+  { value: "COTTON", label: "Cotton (bale)" },
+  { value: "SOYBEAN", label: "Soybean (kg)" },
+  { value: "WHEAT", label: "Wheat (kg)" },
+  { value: "CORN", label: "Corn (kg)" },
+  { value: "SUGAR", label: "Sugar (kg)" },
+  // Others
+  { value: "RUBBER", label: "Rubber (kg)" },
+  { value: "MENTHAOIL", label: "Mentha Oil (kg)" },
+  { value: "CPO", label: "CPO (kg)" },
 ];
 
 interface TradeFormProps {
@@ -68,7 +72,7 @@ interface TradeFormProps {
 }
 
 export function TradeForm({
-  initialCommodity = "gold",
+  initialCommodity = "GOLD",
   initialPrice,
 }: TradeFormProps) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
@@ -101,26 +105,31 @@ export function TradeForm({
 
   // Fetch current price when commodity changes
   useEffect(() => {
-    const fetchPrice = async () => {
+    // Don't fetch price if initialPrice is provided
+    if (initialPrice !== undefined) {
+      return;
+    }
+
+    const getPrice = async () => {
       try {
-        const result = await getCommodityPrice(selectedCommodity);
-        if (result) {
-          setCurrentPrice(result.price);
+        const price = await getCommodityPriceFromMarketData(selectedCommodity);
+        if (price !== null) {
+          setCurrentPrice(price);
         } else {
-          // If API fails, use a mock price
+          // If price not found in market data, use a mock price
           setCurrentPrice(1000 + Math.random() * 500);
         }
       } catch (error) {
-        console.error("Failed to fetch commodity price:", error);
+        console.error("Error fetching price:", error);
         setCurrentPrice(1000 + Math.random() * 500);
       }
     };
 
-    fetchPrice();
+    getPrice();
     // Set up interval to refresh price every 30 seconds
-    const intervalId = setInterval(fetchPrice, 30000);
+    const intervalId = setInterval(getPrice, 30000);
     return () => clearInterval(intervalId);
-  }, [selectedCommodity]);
+  }, [selectedCommodity, initialPrice]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!currentPrice) {
@@ -187,15 +196,13 @@ export function TradeForm({
     currentPrice && form.watch("quantity")
       ? currentPrice * Number.parseFloat(form.watch("quantity"))
       : 0;
-
   const formatPrice = (price: number) => {
-    const conversionRate = 82; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price * conversionRate);
+    }).format(price);
   };
 
   return (

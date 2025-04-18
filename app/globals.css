@@ -121,3 +121,18 @@
 .market-watch-bar-negative {
   background-color: #ef4444;
 }
+
+/* Price update animations */
+.transition-colors {
+  transition-property: background-color, color;
+  transition-timing-function: ease-in-out;
+}
+
+.duration-2000 {
+  transition-duration: 2000ms;
+}
+
+/* Make price changes smoother */
+.price-cell {
+  transition: all 2s ease-in-out;
+}

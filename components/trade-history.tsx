@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTradingContext } from "@/context/trading-context";
 import {
   Table,
@@ -16,29 +17,89 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import type { Trade } from "@/context/trading-context";
 
 export function TradeHistory() {
-  const { trades } = useTradingContext();
+  const { trades, setTrades } = useTradingContext();
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const connectWebSocket = () => {
+      const ws = new WebSocket("ws://localhost:8080");
+      setSocket(ws);
+
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        setIsConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "initial") {
+          // Handle initial trades data
+          setTrades(data.trades);
+        } else if (data.type === "trade") {
+          // Handle new trade update
+          setTrades((prevTrades) => [...prevTrades, data.trade]);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected");
+        setIsConnected(false);
+        // Attempt to reconnect after 5 seconds
+        setTimeout(connectWebSocket, 5000);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        ws.close();
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [setTrades]);
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString();
   };
 
   const formatPrice = (price: number) => {
-    const conversionRate = 82; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price * conversionRate);
+    }).format(price);
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Trade History</CardTitle>
-        <CardDescription>Your recent trading activity</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Trade History</CardTitle>
+            <CardDescription>Your recent trading activity</CardDescription>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {isConnected ? (
+              <span className="text-green-500">●</span>
+            ) : (
+              <span className="text-red-500">●</span>
+            )}
+            <span className="ml-2">
+              {isConnected ? "Connected" : "Disconnected"}
+            </span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         {trades.length === 0 ? (

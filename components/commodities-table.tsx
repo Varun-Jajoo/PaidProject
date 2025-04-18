@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -11,143 +11,121 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, ArrowUpDown, Search } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ArrowUpDown,
+  Search,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import { getMarketData, type MarketDataItem } from "@/app/actions/market-data";
 
-// Mock data for commodities
-const commoditiesData = [
-  {
-    id: "1",
-    name: "Gold",
-    symbol: "GOLD",
-    category: "Metals",
-    price: 62450,
-    change: 1.2,
-    volume: 12450,
-    openInterest: 8750,
-    expiry: "28 Jun 2025",
-  },
-  {
-    id: "2",
-    name: "Silver",
-    symbol: "SILVER",
-    category: "Metals",
-    price: 78250,
-    change: -0.8,
-    volume: 9870,
-    openInterest: 6540,
-    expiry: "28 Jun 2025",
-  },
-  {
-    id: "3",
-    name: "Crude Oil",
-    symbol: "CRUDEOIL",
-    category: "Energy",
-    price: 6780,
-    change: 2.3,
-    volume: 24560,
-    openInterest: 12340,
-    expiry: "19 May 2025",
-  },
-  {
-    id: "4",
-    name: "Natural Gas",
-    symbol: "NATURALGAS",
-    category: "Energy",
-    price: 245.6,
-    change: -1.5,
-    volume: 18760,
-    openInterest: 9870,
-    expiry: "26 May 2025",
-  },
-  {
-    id: "5",
-    name: "Copper",
-    symbol: "COPPER",
-    category: "Metals",
-    price: 845.7,
-    change: 0.5,
-    volume: 7650,
-    openInterest: 4320,
-    expiry: "30 Jun 2025",
-  },
-  {
-    id: "6",
-    name: "Cotton",
-    symbol: "COTTON",
-    category: "Agriculture",
-    price: 34560,
-    change: -0.3,
-    volume: 5430,
-    openInterest: 3210,
-    expiry: "30 May 2025",
-  },
-  {
-    id: "7",
-    name: "Aluminium",
-    symbol: "ALUMINIUM",
-    category: "Metals",
-    price: 245.8,
-    change: 1.8,
-    volume: 6540,
-    openInterest: 4320,
-    expiry: "30 Jun 2025",
-  },
-  {
-    id: "8",
-    name: "Lead",
-    symbol: "LEAD",
-    category: "Metals",
-    price: 187.4,
-    change: 0.2,
-    volume: 4320,
-    openInterest: 2340,
-    expiry: "30 Jun 2025",
-  },
-  {
-    id: "9",
-    name: "Zinc",
-    symbol: "ZINC",
-    category: "Metals",
-    price: 312.6,
-    change: -0.7,
-    volume: 5430,
-    openInterest: 3210,
-    expiry: "30 Jun 2025",
-  },
-  {
-    id: "10",
-    name: "Nickel",
-    symbol: "NICKEL",
-    category: "Metals",
-    price: 1654.3,
-    change: 2.1,
-    volume: 3210,
-    openInterest: 1870,
-    expiry: "30 Jun 2025",
-  },
-];
+function applyFluctuation(price: number): number {
+  const fluctuation = price * 0.003;
+  const randomFactor = (Math.random() * 2 - 1) * fluctuation;
+  return parseFloat((price + randomFactor).toFixed(2));
+}
 
 export function CommoditiesTable() {
+  const [commodities, setCommodities] = useState<MarketDataItem[]>([]);
+  const [previousPrices, setPreviousPrices] = useState<Record<string, number>>(
+    {}
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<keyof MarketDataItem | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [page, setPage] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isUpdating, setIsUpdating] = useState(false);
   const itemsPerPage = 5;
 
+  // Effect to fetch and update market data
+  useEffect(() => {
+    const fetchAndUpdateData = async () => {
+      try {
+        const data = await getMarketData();
+        const categoryData =
+          selectedCategory === "all"
+            ? Object.values(data).flat()
+            : data[selectedCategory.toLowerCase()] || [];
+
+        // Store current prices without immediate update
+        const currentPrices: Record<string, number> = {};
+        const updatedData = categoryData.map((item) => ({
+          ...item,
+          originalPrice: item.price, // Store original price
+        }));
+
+        setCommodities(updatedData);
+
+        // Apply price updates with delay
+        setTimeout(() => {
+          const newData = updatedData.map((item) => {
+            const newPrice = applyFluctuation(item.originalPrice);
+            const prevPrice = previousPrices[item.symbol] || item.price;
+            const priceChange = ((newPrice - prevPrice) / prevPrice) * 100;
+            currentPrices[item.symbol] = newPrice;
+
+            return {
+              ...item,
+              price: newPrice,
+              change: priceChange,
+            };
+          });
+
+          setPreviousPrices(currentPrices);
+          setCommodities(newData);
+          setIsUpdating(false);
+        }, 2000); // 2 second delay for smooth transition
+      } catch (error) {
+        console.error("Failed to fetch market data:", error);
+        setIsUpdating(false);
+      }
+    };
+
+    fetchAndUpdateData();
+    const intervalId = setInterval(() => {
+      setIsUpdating(true);
+      fetchAndUpdateData();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [selectedCategory]);
+
+  // Get price change class for animations
+  const getPriceChangeClass = (symbol: string, currentPrice: number) => {
+    const prevPrice = previousPrices[symbol] || currentPrice;
+    if (isUpdating) return "";
+    if (currentPrice > prevPrice) {
+      return "bg-green-500/10 transition-colors duration-2000";
+    }
+    if (currentPrice < prevPrice) {
+      return "bg-red-500/10 transition-colors duration-2000";
+    }
+    return "";
+  };
+
   // Filter commodities based on search term
-  const filteredCommodities = commoditiesData.filter(
+  const filteredCommodities = commodities.filter(
     (commodity) =>
       commodity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commodity.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commodity.category.toLowerCase().includes(searchTerm.toLowerCase())
+      commodity.symbol.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Sort commodities
   const sortedCommodities = [...filteredCommodities].sort((a, b) => {
     if (!sortBy) return 0;
 
-    const aValue = a[sortBy as keyof typeof a];
-    const bValue = b[sortBy as keyof typeof b];
+    const aValue = a[sortBy];
+    const bValue = b[sortBy];
 
     if (typeof aValue === "number" && typeof bValue === "number") {
       return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
@@ -170,7 +148,7 @@ export function CommoditiesTable() {
 
   const totalPages = Math.ceil(filteredCommodities.length / itemsPerPage);
 
-  const handleSort = (column: string) => {
+  const handleSort = (column: keyof MarketDataItem) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
@@ -180,18 +158,29 @@ export function CommoditiesTable() {
   };
 
   const formatPrice = (price: number) => {
-    const conversionRate = 82; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price * conversionRate);
+    }).format(price);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="metals">Metals</SelectItem>
+            <SelectItem value="energy">Energy</SelectItem>
+            <SelectItem value="agriculture">Agriculture</SelectItem>
+            <SelectItem value="others">Others</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="relative flex-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -217,7 +206,6 @@ export function CommoditiesTable() {
                 </div>
               </TableHead>
               <TableHead>Symbol</TableHead>
-              <TableHead>Category</TableHead>
               <TableHead
                 className="cursor-pointer text-right"
                 onClick={() => handleSort("price")}
@@ -236,9 +224,17 @@ export function CommoditiesTable() {
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="text-right">Volume</TableHead>
-              <TableHead className="text-right">Open Interest</TableHead>
-              <TableHead className="text-right">Expiry</TableHead>
+              <TableHead className="text-right">High</TableHead>
+              <TableHead className="text-right">Low</TableHead>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("volume")}
+              >
+                <div className="flex items-center justify-end">
+                  Volume
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -255,8 +251,12 @@ export function CommoditiesTable() {
                     {commodity.name}
                   </TableCell>
                   <TableCell>{commodity.symbol}</TableCell>
-                  <TableCell>{commodity.category}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell
+                    className={`text-right ${getPriceChangeClass(
+                      commodity.symbol,
+                      commodity.price
+                    )}`}
+                  >
                     {formatPrice(commodity.price)}
                   </TableCell>
                   <TableCell
@@ -264,17 +264,24 @@ export function CommoditiesTable() {
                       commodity.change >= 0 ? "text-green-500" : "text-red-500"
                     }`}
                   >
-                    {commodity.change >= 0 ? "+" : ""}
-                    {commodity.change.toFixed(2)}%
+                    <div className="flex items-center justify-end">
+                      {commodity.change >= 0 ? (
+                        <ArrowUp className="mr-1 h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="mr-1 h-3 w-3" />
+                      )}
+                      {commodity.change >= 0 ? "+" : ""}
+                      {Math.abs(commodity.change).toFixed(2)}%
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatPrice(commodity.high)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatPrice(commodity.low)}
                   </TableCell>
                   <TableCell className="text-right">
                     {commodity.volume.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {commodity.openInterest.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {commodity.expiry}
                   </TableCell>
                 </TableRow>
               ))

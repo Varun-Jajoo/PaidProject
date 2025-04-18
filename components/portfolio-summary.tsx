@@ -89,13 +89,12 @@ export function PortfolioSummary() {
   };
 
   const formatPrice = (price: number) => {
-    const conversionRate = 82; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price * conversionRate);
+    }).format(price);
   };
 
   return (
