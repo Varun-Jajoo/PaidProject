@@ -160,17 +160,7 @@ export function MarketWatchTable() {
   }, []);
 
   const formatPrice = (price: number, currency: string) => {
-    if (currency === "USD") {
-      const conversionRate = 82; // Example conversion rate from USD to INR
-      price = price * conversionRate;
-      currency = "INR";
-    }
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(price);
+    return `₹${price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
   };
 
   const formatNumber = (num: number, decimals = 2) => {
