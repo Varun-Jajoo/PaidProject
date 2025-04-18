@@ -3,87 +3,52 @@
 import { useEffect, useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { getOrderBook } from "@/app/actions/trade-actions"
+import { Trade } from "@/app/models/trade"
+import { Skeleton } from "@/components/ui/skeleton"
 
-type Order = {
-  id: string
-  price: number
-  amount: number
-  side: "buy" | "sell"
-  total: number
+interface OrderBookProps {
+  commodityId: string;
 }
 
-export function OrderBook() {
-  const [buyOrders, setBuyOrders] = useState<Order[]>([])
-  const [sellOrders, setSellOrders] = useState<Order[]>([])
-  const [connected, setConnected] = useState(false)
-  const [socket, setSocket] = useState<WebSocket | null>(null)
+export function OrderBook({ commodityId }: OrderBookProps) {
+  const [buyOrders, setBuyOrders] = useState<Trade[]>([])
+  const [sellOrders, setSellOrders] = useState<Trade[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // In a real app, this would connect to your WebSocket endpoint
-    // const ws = new WebSocket('wss://your-host/orderbook');
+    let isSubscribed = true;
 
-    // For demo purposes, we'll simulate WebSocket behavior
-    console.log("Connecting to WebSocket...")
-    setConnected(true)
-
-    // Generate initial mock data
-    const initialBuyOrders = Array.from({ length: 8 }, (_, i) => ({
-      id: `buy-${i}`,
-      price: 50000 - i * 50,
-      amount: Math.random() * 2 + 0.1,
-      side: "buy" as const,
-      total: (50000 - i * 50) * (Math.random() * 2 + 0.1),
-    }))
-
-    const initialSellOrders = Array.from({ length: 8 }, (_, i) => ({
-      id: `sell-${i}`,
-      price: 50050 + i * 50,
-      amount: Math.random() * 2 + 0.1,
-      side: "sell" as const,
-      total: (50050 + i * 50) * (Math.random() * 2 + 0.1),
-    }))
-
-    setBuyOrders(initialBuyOrders)
-    setSellOrders(initialSellOrders)
-
-    // Simulate WebSocket updates
-    const interval = setInterval(() => {
-      if (Math.random() > 0.5) {
-        // Update buy orders
-        setBuyOrders((prev) => {
-          const newOrders = [...prev]
-          const randomIndex = Math.floor(Math.random() * newOrders.length)
-          newOrders[randomIndex] = {
-            ...newOrders[randomIndex],
-            amount: Math.random() * 2 + 0.1,
-          }
-          newOrders[randomIndex].total = newOrders[randomIndex].price * newOrders[randomIndex].amount
-          return newOrders
-        })
-      } else {
-        // Update sell orders
-        setSellOrders((prev) => {
-          const newOrders = [...prev]
-          const randomIndex = Math.floor(Math.random() * newOrders.length)
-          newOrders[randomIndex] = {
-            ...newOrders[randomIndex],
-            amount: Math.random() * 2 + 0.1,
-          }
-          newOrders[randomIndex].total = newOrders[randomIndex].price * newOrders[randomIndex].amount
-          return newOrders
-        })
+    const fetchOrderBook = async () => {
+      try {
+        setError(null)
+        const { buyOrders: newBuyOrders, sellOrders: newSellOrders } = await getOrderBook(commodityId)
+        
+        if (isSubscribed) {
+          setBuyOrders(newBuyOrders)
+          setSellOrders(newSellOrders)
+        }
+      } catch (err) {
+        console.error('Failed to fetch order book:', err)
+        if (isSubscribed) {
+          setError('Failed to load order book')
+        }
+      } finally {
+        if (isSubscribed) {
+          setLoading(false)
+        }
       }
-    }, 2000)
-
-    // Cleanup function
-    return () => {
-      clearInterval(interval)
-      if (socket) {
-        socket.close()
-      }
-      setConnected(false)
     }
-  }, [])
+
+    fetchOrderBook()
+    const interval = setInterval(fetchOrderBook, 5000)
+
+    return () => {
+      isSubscribed = false
+      clearInterval(interval)
+    }
+  }, [commodityId])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -98,11 +63,44 @@ export function OrderBook() {
     return amount.toFixed(4)
   }
 
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-5 w-20" />
+        </div>
+        <div className="space-y-4">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <Skeleton className="h-5 w-24" />
+              <div className="rounded-md border p-4">
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Skeleton key={j} className="h-8 w-full" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-md bg-red-50 p-4">
+        <div className="text-sm text-red-700">{error}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Order Book</h3>
-        <Badge variant={connected ? "outline" : "destructive"}>{connected ? "Connected" : "Disconnected"}</Badge>
+        <Badge variant="outline">Live</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
@@ -119,7 +117,7 @@ export function OrderBook() {
               </TableHeader>
               <TableBody>
                 {sellOrders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow key={order._id?.toString()}>
                     <TableCell className="font-medium text-red-500">{formatPrice(order.price)}</TableCell>
                     <TableCell className="text-right">{formatAmount(order.amount)}</TableCell>
                     <TableCell className="text-right">{formatPrice(order.total)}</TableCell>
@@ -143,7 +141,7 @@ export function OrderBook() {
               </TableHeader>
               <TableBody>
                 {buyOrders.map((order) => (
-                  <TableRow key={order.id}>
+                  <TableRow key={order._id?.toString()}>
                     <TableCell className="font-medium text-green-500">{formatPrice(order.price)}</TableCell>
                     <TableCell className="text-right">{formatAmount(order.amount)}</TableCell>
                     <TableCell className="text-right">{formatPrice(order.total)}</TableCell>

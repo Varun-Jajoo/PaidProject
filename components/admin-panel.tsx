@@ -74,21 +74,21 @@ export function AdminPanel() {
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">WebSocket Status</p>
+                <p className="text-sm text-muted-foreground">MongoDB Status</p>
+                <Badge className="mt-1" variant="outline">
+                  Connected
+                </Badge>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Redis Cache</p>
                 <Badge className="mt-1" variant="outline">
                   Online
                 </Badge>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Database Status</p>
+                <p className="text-sm text-muted-foreground">SSE Status</p>
                 <Badge className="mt-1" variant="outline">
-                  Online
-                </Badge>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Cache Status</p>
-                <Badge className="mt-1" variant="outline">
-                  Online
+                  Active
                 </Badge>
               </div>
             </div>
@@ -96,5 +96,5 @@ export function AdminPanel() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

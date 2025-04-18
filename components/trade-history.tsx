@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTradingContext } from "@/context/trading-context";
 import {
   Table,
   TableBody,
@@ -17,56 +16,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { Trade } from "@/context/trading-context";
+import { Badge } from "@/components/ui/badge";
+import { Trade } from "@/app/models/trade";
+import { getTrades } from "@/app/actions/trade-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function TradeHistory() {
-  const { trades, setTrades } = useTradingContext();
-  const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [trades, setTrades] = useState<Trade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const connectWebSocket = () => {
-      const ws = new WebSocket("ws://localhost:8080");
-      setSocket(ws);
-
-      ws.onopen = () => {
-        console.log("WebSocket connected");
-        setIsConnected(true);
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "initial") {
-          // Handle initial trades data
-          setTrades(data.trades);
-        } else if (data.type === "trade") {
-          // Handle new trade update
-          setTrades((prevTrades) => [...prevTrades, data.trade]);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log("WebSocket disconnected");
-        setIsConnected(false);
-        // Attempt to reconnect after 5 seconds
-        setTimeout(connectWebSocket, 5000);
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        ws.close();
-      };
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (socket) {
-        socket.close();
+    const fetchTrades = async () => {
+      try {
+        setError(null);
+        const latestTrades = await getTrades();
+        setTrades(latestTrades);
+      } catch (err) {
+        console.error("Failed to fetch trades:", err);
+        setError("Failed to load trade history");
+      } finally {
+        setLoading(false);
       }
     };
-  }, [setTrades]);
+
+    fetchTrades();
+    // Poll for updates every 10 seconds
+    const interval = setInterval(fetchTrades, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatDate = (date: Date) => {
     return new Date(date).toLocaleString();
@@ -81,6 +59,58 @@ export function TradeHistory() {
     }).format(price);
   };
 
+  const getStatusBadgeVariant = (
+    status: Trade["status"]
+  ): "default" | "secondary" | "destructive" | "outline" => {
+    switch (status) {
+      case "completed":
+        return "default";
+      case "pending":
+        return "secondary";
+      case "cancelled":
+        return "destructive";
+      default:
+        return "outline";
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Trade History</CardTitle>
+          <CardDescription>Your recent trading activity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex justify-between">
+                <Skeleton className="h-4 w-[200px]" />
+                <Skeleton className="h-4 w-[100px]" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Trade History</CardTitle>
+          <CardDescription>Your recent trading activity</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md bg-red-50 p-4">
+            <div className="text-sm text-red-700">{error}</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -89,63 +119,60 @@ export function TradeHistory() {
             <CardTitle>Trade History</CardTitle>
             <CardDescription>Your recent trading activity</CardDescription>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {isConnected ? (
-              <span className="text-green-500">●</span>
-            ) : (
-              <span className="text-red-500">●</span>
-            )}
-            <span className="ml-2">
-              {isConnected ? "Connected" : "Disconnected"}
-            </span>
-          </div>
+          <Badge variant="secondary">Auto-updates every 10s</Badge>
         </div>
       </CardHeader>
       <CardContent>
-        {trades.length === 0 ? (
-          <div className="py-4 text-center text-muted-foreground">
-            No trades yet. Start trading to see your history.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date & Time</TableHead>
-                <TableHead>Commodity</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {trades.map((trade) => (
-                <TableRow key={trade.id}>
-                  <TableCell>{formatDate(trade.timestamp)}</TableCell>
-                  <TableCell className="capitalize">
-                    {trade.commodity.replace("_", " ")}
-                  </TableCell>
-                  <TableCell
-                    className={
-                      trade.type === "buy" ? "text-green-500" : "text-red-500"
-                    }
-                  >
-                    {trade.type.toUpperCase()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatPrice(trade.price)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {trade.quantity.toFixed(2)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatPrice(trade.total)}
-                  </TableCell>
+        <div className="space-y-4">
+          {trades.length === 0 ? (
+            <p className="text-center text-muted-foreground">No trades yet</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Side</TableHead>
+                  <TableHead>Commodity</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              </TableHeader>
+              <TableBody>
+                {trades.map((trade) => (
+                  <TableRow key={trade._id?.toString()}>
+                    <TableCell>{formatDate(trade.timestamp)}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          trade.side === "buy" ? "default" : "destructive"
+                        }
+                      >
+                        {trade.side.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{trade.commodityName}</TableCell>
+                    <TableCell className="text-right">
+                      {formatPrice(trade.price)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {trade.amount.toFixed(4)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatPrice(trade.total)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant={getStatusBadgeVariant(trade.status)}>
+                        {trade.status.toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
