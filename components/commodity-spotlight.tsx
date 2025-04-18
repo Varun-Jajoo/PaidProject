@@ -62,7 +62,7 @@ const calculateIndicators = (data: any[]) => {
     const avgGain = gains.reduce((a, b) => a + b) / 14;
     const avgLoss = losses.reduce((a, b) => a + b) / 14;
     const rs = avgGain / avgLoss;
-    const rsi = 100 - (100 / (1 + rs));
+    const rsi = 100 - 100 / (1 + rs);
     return { ...item, rsi };
   });
 
@@ -82,38 +82,46 @@ export function CommoditySpotlight() {
   const generateHistoricalData = (basePrice: number, days: number) => {
     const data = [];
     const now = new Date();
-    
+
     for (let i = days; i >= 0; i--) {
       const date = new Date(now);
       date.setDate(now.getDate() - i);
       // Use sine wave + random noise for realistic price movement
-      const randomFactor = Math.sin(i / 5) * 0.05 + (Math.random() - 0.5) * 0.02;
+      const randomFactor =
+        Math.sin(i / 5) * 0.05 + (Math.random() - 0.5) * 0.02;
       const price = basePrice * (1 + randomFactor);
-      
+
       data.push({
         date: date.toISOString().split("T")[0],
         price: price,
       });
     }
-    
+
     return calculateIndicators(data);
   };
 
   const getDays = () => {
     switch (timeframe) {
-      case "1d": return 1;
-      case "1w": return 7;
-      case "1m": return 30;
-      case "3m": return 90;
-      default: return 7;
+      case "1d":
+        return 1;
+      case "1w":
+        return 7;
+      case "1m":
+        return 30;
+      case "3m":
+        return 90;
+      default:
+        return 7;
     }
   };
 
-  const chartData = marketData ? generateHistoricalData(marketData.price, getDays()) : [];
+  const chartData = marketData
+    ? generateHistoricalData(marketData.price, getDays())
+    : [];
 
   const handleSetAlert = async () => {
     if (!marketData) return;
-    
+
     try {
       if (hasAlert) {
         if (!alertId) {
@@ -134,14 +142,16 @@ export function CommoditySpotlight() {
           price: targetPrice,
           condition: "above" as const,
           active: true,
-          createdAt: new Date()
+          createdAt: new Date(),
         };
         const newAlertId = await createPriceAlert(alert);
         setAlertId(newAlertId);
         setHasAlert(true);
         toast({
           title: "Alert Set",
-          description: `You will be notified when ${commodity} reaches ${formatPrice(targetPrice)}`,
+          description: `You will be notified when ${commodity} reaches ${formatPrice(
+            targetPrice
+          )}`,
         });
       }
     } catch (error) {
@@ -261,12 +271,30 @@ export function CommoditySpotlight() {
                 }}
               >
                 <defs>
-                  <linearGradient id={`color${commodity}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={commodityColor} stopOpacity={0.8} />
-                    <stop offset="95%" stopColor={commodityColor} stopOpacity={0} />
+                  <linearGradient
+                    id={`color${commodity}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={commodityColor}
+                      stopOpacity={0.8}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={commodityColor}
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#333"
+                />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
@@ -288,7 +316,11 @@ export function CommoditySpotlight() {
                 <Tooltip
                   formatter={(value: number, name: string) => [
                     formatPrice(value),
-                    name === "price" ? "Price" : name === "sma" ? "SMA (5)" : "RSI (14)"
+                    name === "price"
+                      ? "Price"
+                      : name === "sma"
+                      ? "SMA (5)"
+                      : "RSI (14)",
                   ]}
                   labelFormatter={(label) => `Date: ${label}`}
                 />
