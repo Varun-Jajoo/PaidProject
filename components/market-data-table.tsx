@@ -1,156 +1,305 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Search, ArrowUpDown } from "lucide-react"
+import { useState, useEffect } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, ArrowUpDown } from "lucide-react";
+import { useTradingContext } from "@/context/trading-context";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TradeForm } from "@/components/trade-form";
 
-// Mock data for different commodity categories
-const marketData = {
+type MarketDataItem = {
+  id: string;
+  name: string;
+  symbol: string;
+  price: number;
+  change: number;
+  high: number;
+  low: number;
+  volume: number;
+};
+
+interface MarketDataTableProps {
+  category: "metals" | "energy" | "agriculture" | "others";
+}
+
+// Utility to apply ±0.3% random fluctuation
+function applyFluctuation(price: number): number {
+  const fluctuation = price * 0.003;
+  const randomFactor = (Math.random() * 2 - 1) * fluctuation;
+  return parseFloat((price + randomFactor).toFixed(2));
+}
+
+// Base market data with Indian MCX spot/futures prices
+const baseMarketData: Record<string, MarketDataItem[]> = {
   metals: [
-    { id: "1", name: "Gold", symbol: "GOLD", price: 62450, change: 1.2, high: 62780, low: 62100, volume: 12450 },
-    { id: "2", name: "Silver", symbol: "SILVER", price: 78250, change: -0.8, high: 78900, low: 77800, volume: 9870 },
-    { id: "3", name: "Copper", symbol: "COPPER", price: 845.7, change: 0.5, high: 850.2, low: 840.1, volume: 7650 },
     {
-      id: "4",
-      name: "Aluminium",
-      symbol: "ALUMINIUM",
-      price: 245.8,
-      change: 1.8,
-      high: 248.3,
-      low: 243.2,
-      volume: 6540,
+      id: "1",
+      name: "Gold (10g)",
+      symbol: "GOLD",
+      price: 94760,
+      change: 0,
+      high: 96000,
+      low: 93500,
+      volume: 5000,
     },
-    { id: "5", name: "Lead", symbol: "LEAD", price: 187.4, change: 0.2, high: 188.5, low: 186.2, volume: 4320 },
-    { id: "6", name: "Zinc", symbol: "ZINC", price: 312.6, change: -0.7, high: 315.8, low: 310.2, volume: 5430 },
-    { id: "7", name: "Nickel", symbol: "NICKEL", price: 1654.3, change: 2.1, high: 1670.5, low: 1640.2, volume: 3210 },
-  ],
-  energy: [
-    { id: "1", name: "Crude Oil", symbol: "CRUDEOIL", price: 6780, change: 2.3, high: 6850, low: 6720, volume: 24560 },
     {
       id: "2",
-      name: "Natural Gas",
-      symbol: "NATURALGAS",
-      price: 245.6,
-      change: -1.5,
-      high: 250.2,
-      low: 243.8,
-      volume: 18760,
+      name: "Silver (10g)",
+      symbol: "SILVER",
+      price: 952,
+      change: 0,
+      high: 970,
+      low: 940,
+      volume: 7500,
     },
     {
       id: "3",
-      name: "Brent Crude",
-      symbol: "BRENTCRUDEOIL",
-      price: 7120,
-      change: 1.8,
-      high: 7180,
-      low: 7050,
-      volume: 15670,
+      name: "Copper (kg)",
+      symbol: "COPPER",
+      price: 906.4,
+      change: 0,
+      high: 920,
+      low: 890,
+      volume: 3000,
     },
     {
       id: "4",
-      name: "Heating Oil",
+      name: "Aluminium (kg)",
+      symbol: "ALUMINIUM",
+      price: 232.85,
+      change: 0,
+      high: 240,
+      low: 225,
+      volume: 4000,
+    },
+    {
+      id: "5",
+      name: "Lead (kg)",
+      symbol: "LEAD",
+      price: 191.85,
+      change: 0,
+      high: 200,
+      low: 185,
+      volume: 3500,
+    },
+    {
+      id: "6",
+      name: "Zinc (kg)",
+      symbol: "ZINC",
+      price: 273.95,
+      change: 0,
+      high: 285,
+      low: 260,
+      volume: 3600,
+    },
+    {
+      id: "7",
+      name: "Nickel (kg)",
+      symbol: "NICKEL",
+      price: 1654.3,
+      change: 0,
+      high: 1680,
+      low: 1630,
+      volume: 1500,
+    },
+  ],
+  energy: [
+    {
+      id: "1",
+      name: "Crude Oil (barrel)",
+      symbol: "CRUDEOIL",
+      price: 5811,
+      change: 0,
+      high: 6122,
+      low: 5555,
+      volume: 24000,
+    },
+    {
+      id: "2",
+      name: "Natural Gas (MMBtu)",
+      symbol: "NATURALGAS",
+      price: 356.1,
+      change: 0,
+      high: 388,
+      low: 322,
+      volume: 18000,
+    },
+    {
+      id: "3",
+      name: "Brent Crude (barrel)",
+      symbol: "BRENT",
+      price: 6122,
+      change: 0,
+      high: 6375,
+      low: 5800,
+      volume: 15000,
+    },
+    {
+      id: "4",
+      name: "Heating Oil (barrel)",
       symbol: "HEATINGOIL",
       price: 2345,
-      change: 0.7,
-      high: 2360,
-      low: 2330,
-      volume: 8760,
+      change: 0,
+      high: 2400,
+      low: 2300,
+      volume: 9000,
     },
   ],
   agriculture: [
-    { id: "1", name: "Cotton", symbol: "COTTON", price: 34560, change: -0.3, high: 34780, low: 34320, volume: 5430 },
-    { id: "2", name: "Soybean", symbol: "SOYBEAN", price: 4560, change: 1.2, high: 4620, low: 4510, volume: 7650 },
-    { id: "3", name: "Wheat", symbol: "WHEAT", price: 2340, change: -0.8, high: 2380, low: 2320, volume: 6540 },
-    { id: "4", name: "Corn", symbol: "CORN", price: 1870, change: 0.5, high: 1890, low: 1860, volume: 8760 },
-    { id: "5", name: "Sugar", symbol: "SUGAR", price: 4320, change: 1.5, high: 4380, low: 4290, volume: 9870 },
-  ],
-  others: [
-    { id: "1", name: "Rubber", symbol: "RUBBER", price: 18760, change: 0.8, high: 18900, low: 18650, volume: 4320 },
+    {
+      id: "1",
+      name: "Cotton (bale)",
+      symbol: "COTTON",
+      price: 1795,
+      change: 0,
+      high: 1850,
+      low: 1750,
+      volume: 7000,
+    },
     {
       id: "2",
-      name: "Mentha Oil",
-      symbol: "MENTHAOIL",
-      price: 1230,
-      change: -1.2,
-      high: 1250,
-      low: 1220,
-      volume: 3210,
+      name: "Soybean (kg)",
+      symbol: "SOYBEAN",
+      price: 6060,
+      change: 0,
+      high: 6200,
+      low: 5900,
+      volume: 6500,
     },
-    { id: "3", name: "CPO", symbol: "CPO", price: 876, change: 2.1, high: 890, low: 870, volume: 5430 },
+    {
+      id: "3",
+      name: "Wheat (kg)",
+      symbol: "WHEAT",
+      price: 2390,
+      change: 0,
+      high: 2450,
+      low: 2350,
+      volume: 6000,
+    },
+    {
+      id: "4",
+      name: "Corn (kg)",
+      symbol: "CORN",
+      price: 1970,
+      change: 0,
+      high: 2050,
+      low: 1900,
+      volume: 8200,
+    },
+    {
+      id: "5",
+      name: "Sugar (kg)",
+      symbol: "SUGAR",
+      price: 3410,
+      change: 0,
+      high: 3550,
+      low: 3300,
+      volume: 9500,
+    },
   ],
-}
-
-type MarketDataItem = {
-  id: string
-  name: string
-  symbol: string
-  price: number
-  change: number
-  high: number
-  low: number
-  volume: number
-}
-
-interface MarketDataTableProps {
-  category: "metals" | "energy" | "agriculture" | "others"
-}
+  others: [
+    {
+      id: "1",
+      name: "Rubber (kg)",
+      symbol: "RUBBER",
+      price: 18760,
+      change: 0,
+      high: 19000,
+      low: 18500,
+      volume: 3200,
+    },
+    {
+      id: "2",
+      name: "Mentha Oil (kg)",
+      symbol: "MENTHAOIL",
+      price: 958.9,
+      change: 0,
+      high: 980,
+      low: 930,
+      volume: 2800,
+    },
+    {
+      id: "3",
+      name: "CPO (kg)",
+      symbol: "CPO",
+      price: 876,
+      change: 0,
+      high: 900,
+      low: 850,
+      volume: 5400,
+    },
+  ],
+};
 
 export function MarketDataTable({ category }: MarketDataTableProps) {
-  const [data, setData] = useState<MarketDataItem[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState<keyof MarketDataItem | null>(null)
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+  const [data, setData] = useState<MarketDataItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<keyof MarketDataItem | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MarketDataItem | null>(null);
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    // fetch(`/api/market-data/${category}`)
-    setData(marketData[category])
-  }, [category])
+    // Apply fluctuation to base data on each category change
+    const updated = baseMarketData[category].map((item) => ({
+      ...item,
+      price: applyFluctuation(item.price),
+      high: applyFluctuation(item.high),
+      low: applyFluctuation(item.low),
+      change: parseFloat((Math.random() * 0.6 - 0.3).toFixed(2)),
+    }));
+    setData(updated);
+  }, [category]);
 
-  // Filter data based on search term
   const filteredData = data.filter(
     (item) =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.symbol.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      item.symbol.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  // Sort data
   const sortedData = [...filteredData].sort((a, b) => {
-    if (!sortBy) return 0
-
-    const aValue = a[sortBy]
-    const bValue = b[sortBy]
+    if (!sortBy) return 0;
+    const aValue = a[sortBy];
+    const bValue = b[sortBy];
 
     if (typeof aValue === "number" && typeof bValue === "number") {
-      return sortOrder === "asc" ? aValue - bValue : bValue - aValue
+      return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
     }
-
     if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      return sortOrder === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
-
-    return 0
-  })
+    return 0;
+  });
 
   const handleSort = (column: keyof MarketDataItem) => {
     if (sortBy === column) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      setSortBy(column)
-      setSortOrder("asc")
+      setSortBy(column);
+      setSortOrder("asc");
     }
-  }
+  };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price)
-  }
+    }).format(price);
+
+  const { executeTrade } = useTradingContext();
 
   return (
     <div className="space-y-4">
@@ -168,20 +317,29 @@ export function MarketDataTable({ category }: MarketDataTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort("name")}
+              >
                 <div className="flex items-center">
                   Name
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
               <TableHead>Symbol</TableHead>
-              <TableHead className="cursor-pointer text-right" onClick={() => handleSort("price")}>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("price")}
+              >
                 <div className="flex items-center justify-end">
                   Price
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer text-right" onClick={() => handleSort("change")}>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("change")}
+              >
                 <div className="flex items-center justify-end">
                   Change %
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -189,7 +347,10 @@ export function MarketDataTable({ category }: MarketDataTableProps) {
               </TableHead>
               <TableHead className="text-right">High</TableHead>
               <TableHead className="text-right">Low</TableHead>
-              <TableHead className="cursor-pointer text-right" onClick={() => handleSort("volume")}>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("volume")}
+              >
                 <div className="flex items-center justify-end">
                   Volume
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -219,7 +380,14 @@ export function MarketDataTable({ category }: MarketDataTableProps) {
                   <TableCell className="text-right">{formatPrice(item.low)}</TableCell>
                   <TableCell className="text-right">{item.volume.toLocaleString()}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setIsDialogOpen(true);
+                      }}
+                    >
                       Trade
                     </Button>
                   </TableCell>
@@ -228,7 +396,19 @@ export function MarketDataTable({ category }: MarketDataTableProps) {
             )}
           </TableBody>
         </Table>
-      </div>
+      </div>      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) setSelectedItem(null);
+      }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              Trade {selectedItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <TradeForm initialCommodity={selectedItem?.symbol.toLowerCase()} initialPrice={selectedItem?.price} />
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }

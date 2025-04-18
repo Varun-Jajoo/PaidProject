@@ -32,8 +32,8 @@ export function MainNav() {
       href: "/news",
     },
     {
-      name: "Portfolio",
-      href: "/portfolio",
+      name: "Admin",
+      href: "/admin",
     },
     {
       name: "History",

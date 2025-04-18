@@ -108,11 +108,11 @@ export function PortfolioSummary() {
         <div className="mb-6 grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-muted p-3">
             <p className="text-sm font-medium">Cash Balance</p>
-            <p className="text-2xl font-bold">${portfolio.cash.toFixed(2)}</p>
+            <p className="text-2xl font-bold">{formatPrice(portfolio.cash)}</p>
           </div>
           <div className="rounded-lg bg-muted p-3">
             <p className="text-sm font-medium">Total Value</p>
-            <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
+            <p className="text-2xl font-bold">{formatPrice(totalValue)}</p>
           </div>
         </div>
 
@@ -142,7 +142,7 @@ export function PortfolioSummary() {
                   currentPrices[position.commodity] || position.averagePrice;
 
                 return (
-                    <TableRow key={position.commodity}>
+                  <TableRow key={position.commodity}>
                     <TableCell className="font-medium capitalize">
                       {position.commodity.replace("_", " ")}
                     </TableCell>
@@ -157,12 +157,12 @@ export function PortfolioSummary() {
                     </TableCell>
                     <TableCell
                       className={`text-right ${
-                      pnl >= 0 ? "text-green-500" : "text-red-500"
+                        pnl >= 0 ? "text-green-500" : "text-red-500"
                       }`}
                     >
                       {formatPrice(pnl)} ({pnlPercentage.toFixed(2)}%)
                     </TableCell>
-                    </TableRow>
+                  </TableRow>
                 );
               })}
             </TableBody>

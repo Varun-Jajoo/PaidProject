@@ -103,7 +103,7 @@ export function CommoditySpotlight() {
           setData(generateHistoricalData(result.price, getDays()));
         } else {
           // If API fails, use mock data
-          const mockPrice = 1000 + Math.random() * 500;
+          const mockPrice = 900 + Math.random() * 500;
           setCurrentPrice(mockPrice);
           setData(generateHistoricalData(mockPrice, getDays()));
         }
@@ -126,7 +126,7 @@ export function CommoditySpotlight() {
   };
 
   const formatPrice = (value: number) => {
-    const conversionRate = 82; // Example conversion rate from USD to INR
+    const conversionRate = 80; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
