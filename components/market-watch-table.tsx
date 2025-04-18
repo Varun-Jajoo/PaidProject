@@ -11,10 +11,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowDown, ArrowUp, Star, StarOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Star, StarOff, Sparkles } from "lucide-react";
 import { useTradingContext } from "@/context/trading-context";
+import { PriceAlertDialog } from "./price-alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// Define the type for market data
 type MarketData = {
   id: string;
   name: string;
@@ -28,6 +34,38 @@ type MarketData = {
   timestamp: number;
   volume?: number;
   openInterest?: number;
+  indicators?: {
+    rsi: number | null;
+    sma: number | null;
+    trend: "bullish" | "bearish" | null;
+  };
+};
+
+// Technical indicators calculation functions
+const calculateRSI = (prices: number[], periods = 14) => {
+  if (prices.length < periods) return null;
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i < periods; i++) {
+    const difference = prices[i] - prices[i - 1];
+    if (difference >= 0) {
+      gains += difference;
+    } else {
+      losses -= difference;
+    }
+  }
+
+  const avgGain = gains / periods;
+  const avgLoss = losses / periods;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+};
+
+const calculateSMA = (prices: number[], periods = 20) => {
+  if (prices.length < periods) return null;
+  const sum = prices.slice(0, periods).reduce((a, b) => a + b, 0);
+  return sum / periods;
 };
 
 // Direct API key as requested
@@ -62,13 +100,15 @@ export function MarketWatchTable() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const { watchlist, addToWatchlist, removeFromWatchlist } =
     useTradingContext();
+  const [priceHistory, setPriceHistory] = useState<Record<string, number[]>>(
+    {}
+  );
 
   const fetchCommodityPrices = async () => {
     setLoading(true);
     try {
       const newMarketData: MarketData[] = [];
 
-      // Fetch each commodity price individually
       for (const commodity of COMMODITIES) {
         try {
           const response = await fetch(
@@ -96,25 +136,47 @@ export function MarketWatchTable() {
               ? (change / previousPrice) * 100
               : 0;
 
+            // Update price history for technical indicators
+            const updatedPriceHistory = {
+              ...priceHistory,
+              [commodity.id]: [
+                apiData.price,
+                ...(priceHistory[commodity.id] || []),
+              ].slice(0, 50),
+            };
+            setPriceHistory(updatedPriceHistory);
+
+            // Calculate technical indicators
+            const prices = updatedPriceHistory[commodity.id] || [];
+            const rsi = calculateRSI(prices);
+            const sma = calculateSMA(prices);
+
             newMarketData.push({
               id: commodity.id,
               name: commodity.name,
               displayName: commodity.displayName,
               category: commodity.category,
               price: apiData.price,
-              previousPrice: previousPrice,
-              change: change,
-              percentChange: percentChange,
+              previousPrice,
+              change,
+              percentChange,
               currency: apiData.currency,
               timestamp: apiData.timestamp,
-              // Mock volume and open interest for demo purposes
               volume: Math.floor(Math.random() * 10000) + 1000,
               openInterest: Math.floor(Math.random() * 5000) + 500,
+              indicators: {
+                rsi,
+                sma,
+                trend: sma
+                  ? apiData.price > sma
+                    ? "bullish"
+                    : "bearish"
+                  : null,
+              },
             });
           }
         } catch (error) {
           console.error(`Failed to fetch ${commodity.name}:`, error);
-
           // Use previous data or mock data if API fails
           const previousData = marketData.find(
             (item) => item.id === commodity.id
@@ -122,7 +184,6 @@ export function MarketWatchTable() {
           if (previousData) {
             newMarketData.push(previousData);
           } else {
-            // Create mock data
             newMarketData.push({
               id: commodity.id,
               name: commodity.name,
@@ -136,6 +197,7 @@ export function MarketWatchTable() {
               timestamp: Date.now() / 1000,
               volume: Math.floor(Math.random() * 10000) + 1000,
               openInterest: Math.floor(Math.random() * 5000) + 500,
+              indicators: { rsi: null, sma: null, trend: null },
             });
           }
         }
@@ -152,10 +214,7 @@ export function MarketWatchTable() {
 
   useEffect(() => {
     fetchCommodityPrices();
-
-    // Set up interval to refresh data every 60 seconds
     const intervalId = setInterval(fetchCommodityPrices, 60000);
-
     return () => clearInterval(intervalId);
   }, []);
 
@@ -179,6 +238,13 @@ export function MarketWatchTable() {
     }
   };
 
+  const getIndicatorColor = (rsi: number | null) => {
+    if (rsi === null) return "text-gray-500";
+    if (rsi >= 70) return "text-red-500";
+    if (rsi <= 30) return "text-green-500";
+    return "text-blue-500";
+  };
+
   return (
     <div className="overflow-auto">
       <div className="px-4 py-2 text-sm text-muted-foreground">
@@ -200,26 +266,29 @@ export function MarketWatchTable() {
               % Change
             </TableHead>
             <TableHead className="whitespace-nowrap text-right">
+              Indicators
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-right">
+              Alerts
+            </TableHead>
+            <TableHead className="whitespace-nowrap text-right">
               Volume
             </TableHead>
             <TableHead className="whitespace-nowrap text-right">
               Open Interest
-            </TableHead>
-            <TableHead className="whitespace-nowrap text-right">
-              Last Updated
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading && marketData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-4">
+              <TableCell colSpan={10} className="text-center py-4">
                 Loading market data...
               </TableCell>
             </TableRow>
           ) : marketData.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="text-center py-4">
+              <TableCell colSpan={10} className="text-center py-4">
                 No market data available
               </TableCell>
             </TableRow>
@@ -273,14 +342,45 @@ export function MarketWatchTable() {
                     {formatNumber(Math.abs(item.percentChange))}%
                   </div>
                 </TableCell>
+                <TableCell>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={getIndicatorColor(
+                            item.indicators?.rsi || null
+                          )}
+                        >
+                          <Sparkles className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="space-y-1 text-sm">
+                          <p>
+                            RSI: {item.indicators?.rsi?.toFixed(2) || "N/A"}
+                          </p>
+                          <p>
+                            SMA(20): {item.indicators?.sma?.toFixed(2) || "N/A"}
+                          </p>
+                          <p>Trend: {item.indicators?.trend || "N/A"}</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
+                <TableCell>
+                  <PriceAlertDialog
+                    symbol={item.name}
+                    currentPrice={item.price}
+                  />
+                </TableCell>
                 <TableCell className="text-right">
                   {item.volume?.toLocaleString() || "-"}
                 </TableCell>
                 <TableCell className="text-right">
                   {item.openInterest?.toLocaleString() || "-"}
-                </TableCell>
-                <TableCell className="text-right whitespace-nowrap">
-                  {formatTimestamp(item.timestamp)}
                 </TableCell>
               </TableRow>
             ))

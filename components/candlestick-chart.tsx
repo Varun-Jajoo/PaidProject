@@ -1,24 +1,38 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { Card } from "@/components/ui/card"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect, useState } from "react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Mock OHLC data
 const generateMockData = () => {
-  const data = []
-  const now = new Date()
+  const data = [];
+  const now = new Date();
   for (let i = 30; i >= 0; i--) {
-    const date = new Date(now)
-    date.setDate(now.getDate() - i)
+    const date = new Date(now);
+    date.setDate(now.getDate() - i);
 
-    const basePrice = 50000 + Math.random() * 10000
-    const open = basePrice
-    const high = open + Math.random() * 1000
-    const low = open - Math.random() * 1000
-    const close = low + Math.random() * (high - low)
+    const basePrice = 50000 + Math.random() * 10000;
+    const open = basePrice;
+    const high = open + Math.random() * 1000;
+    const low = open - Math.random() * 1000;
+    const close = low + Math.random() * (high - low);
 
     data.push({
       date: date.toISOString().split("T")[0],
@@ -27,15 +41,15 @@ const generateMockData = () => {
       low,
       close,
       volume: Math.floor(Math.random() * 1000) + 500,
-    })
+    });
   }
-  return data
-}
+  return data;
+};
 
 export function CandlestickChart() {
-  const [data, setData] = useState<any[]>([])
-  const [timeframe, setTimeframe] = useState("1d")
-  const [symbol, setSymbol] = useState("BTC/USD")
+  const [data, setData] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState("1d");
+  const [symbol, setSymbol] = useState("BTC/USD");
 
   useEffect(() => {
     // In a real app, this would be an API call like:
@@ -43,29 +57,24 @@ export function CandlestickChart() {
     const fetchData = async () => {
       try {
         // Simulate API call
-        const mockData = generateMockData()
-        setData(mockData)
+        const mockData = generateMockData();
+        setData(mockData);
       } catch (error) {
-        console.error("Error fetching OHLC data:", error)
+        console.error("Error fetching OHLC data:", error);
       }
-    }
+    };
 
-    fetchData()
+    fetchData();
 
     // Set up interval to refresh data
-    const intervalId = setInterval(fetchData, 30000) // Refresh every 30 seconds
+    const intervalId = setInterval(fetchData, 30000); // Refresh every 30 seconds
 
-    return () => clearInterval(intervalId)
-  }, [symbol, timeframe])
+    return () => clearInterval(intervalId);
+  }, [symbol, timeframe]);
 
   const formatPrice = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
-  }
+    return `₹${value.toLocaleString()}`;
+  };
 
   return (
     <Card className="p-0">
@@ -83,7 +92,12 @@ export function CandlestickChart() {
               </SelectContent>
             </Select>
           </div>
-          <Tabs defaultValue="1d" className="w-auto" value={timeframe} onValueChange={setTimeframe}>
+          <Tabs
+            defaultValue="1d"
+            className="w-auto"
+            value={timeframe}
+            onValueChange={setTimeframe}
+          >
             <TabsList>
               <TabsTrigger value="1h">1H</TabsTrigger>
               <TabsTrigger value="4h">4H</TabsTrigger>
@@ -109,15 +123,19 @@ export function CandlestickChart() {
                   <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="#333"
+              />
               <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
                 tick={{ fontSize: 12 }}
                 tickFormatter={(value) => {
-                  const date = new Date(value)
-                  return date.getDate().toString()
+                  const date = new Date(value);
+                  return date.getDate().toString();
                 }}
               />
               <YAxis
@@ -128,12 +146,21 @@ export function CandlestickChart() {
                 tickLine={false}
                 tick={{ fontSize: 12 }}
               />
-              <Tooltip formatter={(value: number) => formatPrice(value)} labelFormatter={(label) => `Date: ${label}`} />
-              <Area type="monotone" dataKey="close" stroke="#10B981" fillOpacity={1} fill="url(#colorClose)" />
+              <Tooltip
+                formatter={(value: number) => formatPrice(value)}
+                labelFormatter={(label) => `Date: ${label}`}
+              />
+              <Area
+                type="monotone"
+                dataKey="close"
+                stroke="#10B981"
+                fillOpacity={1}
+                fill="url(#colorClose)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
     </Card>
-  )
+  );
 }

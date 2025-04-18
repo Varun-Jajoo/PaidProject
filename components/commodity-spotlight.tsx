@@ -24,7 +24,7 @@ import {
 import { Bell, BellOff } from "lucide-react";
 import { useMarketData } from "@/hooks/use-market-data";
 import { useToast } from "@/components/ui/use-toast";
-import { setPriceAlert, removePriceAlert } from "@/app/actions/price-alerts";
+import { createPriceAlert, deletePriceAlert } from "@/app/actions/price-alerts";
 
 const commodityOptions = [
   { value: "GOLD", label: "Gold", color: "#FFD700" },
@@ -74,6 +74,7 @@ export function CommoditySpotlight() {
   const [commodity, setCommodity] = useState("GOLD");
   const [showIndicators, setShowIndicators] = useState(true);
   const [hasAlert, setHasAlert] = useState(false);
+  const [alertId, setAlertId] = useState<string | null>(null);
   const { toast } = useToast();
   const { data: marketData, loading } = useMarketData(commodity, 15000); // 15 second updates
 
@@ -115,15 +116,28 @@ export function CommoditySpotlight() {
     
     try {
       if (hasAlert) {
-        await removePriceAlert(commodity, "user123"); // TODO: Get actual user ID
+        if (!alertId) {
+          throw new Error("Alert ID not found");
+        }
+        await deletePriceAlert(alertId);
         setHasAlert(false);
+        setAlertId(null);
         toast({
           title: "Alert Removed",
           description: `Price alert for ${commodity} has been removed`,
         });
       } else {
         const targetPrice = marketData.price * 1.01; // Alert at 1% above current price
-        await setPriceAlert(commodity, targetPrice, "user123"); // TODO: Get actual user ID
+        const alert = {
+          userId: "user123", // TODO: Get actual user ID
+          symbol: commodity,
+          price: targetPrice,
+          condition: "above" as const,
+          active: true,
+          createdAt: new Date()
+        };
+        const newAlertId = await createPriceAlert(alert);
+        setAlertId(newAlertId);
         setHasAlert(true);
         toast({
           title: "Alert Set",
