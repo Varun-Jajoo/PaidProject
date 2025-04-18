@@ -217,7 +217,7 @@ export function TradeForm({
                     <Input {...field} type="number" step="0.01" />
                   </FormControl>
                   <FormDescription>
-                    Current market price: {currentPrice ? `$${currentPrice.toFixed(2)}` : "Loading..."}
+                    Current market price: {currentPrice ? `${currentPrice.toFixed(2)}` : "Loading..."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
