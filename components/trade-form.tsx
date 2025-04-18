@@ -134,6 +134,16 @@ export function TradeForm() {
   const estimatedTotal =
     currentPrice && form.watch("quantity") ? currentPrice * Number.parseFloat(form.watch("quantity")) : 0
 
+  const formatPrice = (price: number) => {
+    const conversionRate = 82; // Example conversion rate from USD to INR
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price * conversionRate);
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={side} onValueChange={(value) => setSide(value as "buy" | "sell")}>
@@ -212,9 +222,9 @@ export function TradeForm() {
 
           <Button
             type="submit"
-            className={side === "buy" ? "bg-green-500 hover:bg-green-600" : "bg-red-500 hover:bg-red-600"}
+            className={ side === "buy" ? "bg-green-500 hover:bg-green-600 w-full" : "bg-red-500 hover:bg-red-600 w-full"}
             size="lg"
-            className="w-full"
+            
             disabled={isLoading}
           >
             {isLoading ? "Processing..." : side === "buy" ? "Buy" : "Sell"}

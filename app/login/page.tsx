@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader />
+     
       <div className="flex flex-1 items-center justify-center p-4 md:p-8">
         <Card className="mx-auto max-w-md">
           <CardHeader>

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 export default function MarketDataPage() {
   return (
     <div className="flex min-h-screen w-full flex-col">
-      <DashboardHeader />
+    
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <Tabs defaultValue="metals">
           <TabsList className="grid w-full grid-cols-4 md:w-auto">

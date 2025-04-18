@@ -17,7 +17,7 @@ export function MainNav() {
     },
     {
       name: "Market Watch",
-      href: "/market-watch",
+      href: "/market-data",
     },
     {
       name: "Commodities",
@@ -31,10 +31,18 @@ export function MainNav() {
       name: "News",
       href: "/news",
     },
+    {
+      name: "Portfolio",
+      href: "/portfolio",
+    },
+    {
+      name: "History",
+      href: "/history",
+    }
   ]
 
   return (
-    <div className="mr-4 flex">
+    <div className="mr-4 w-full flex justify-between items-center space-x-4 border-b border-border bg-background px-4 py-2 dark:border-border/50">
       <Link href="/" className="mr-6 flex items-center space-x-2">
         <BarChart3 className="h-6 w-6" />
         <span className="hidden font-bold sm:inline-block">Commodity Exchange</span>

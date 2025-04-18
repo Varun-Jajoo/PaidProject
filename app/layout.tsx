@@ -30,8 +30,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <TradingProvider>
             <SidebarProvider>
-              <div className="flex min-h-screen">
-                <DashboardSidebar />
+              <div className="flex min-h-screen w-full">
                 <div className="flex flex-1 flex-col">
                   <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="container flex h-14 items-center">

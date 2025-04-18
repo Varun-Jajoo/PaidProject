@@ -83,13 +83,18 @@ export function TrendingCommodities() {
   }, [])
 
   const formatPrice = (price: number, currency: string) => {
-    return new Intl.NumberFormat("en-US", {
+    if (currency === "USD") {
+      const conversionRate = 82; // Example conversion rate from USD to INR
+      price = price * conversionRate;
+      currency = "INR";
+    }
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price)
-  }
+    }).format(price);
+  };
 
   if (loading) {
     return <div className="py-4 text-center">Loading trending commodities...</div>

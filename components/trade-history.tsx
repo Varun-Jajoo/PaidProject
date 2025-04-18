@@ -1,15 +1,38 @@
-"use client"
+"use client";
 
-import { useTradingContext } from "@/context/trading-context"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTradingContext } from "@/context/trading-context";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function TradeHistory() {
-  const { trades } = useTradingContext()
+  const { trades } = useTradingContext();
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleString()
-  }
+    return new Date(date).toLocaleString();
+  };
+
+  const formatPrice = (price: number) => {
+    const conversionRate = 82; // Example conversion rate from USD to INR
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price * conversionRate);
+  };
 
   return (
     <Card>
@@ -38,13 +61,25 @@ export function TradeHistory() {
               {trades.map((trade) => (
                 <TableRow key={trade.id}>
                   <TableCell>{formatDate(trade.timestamp)}</TableCell>
-                  <TableCell className="capitalize">{trade.commodity.replace("_", " ")}</TableCell>
-                  <TableCell className={trade.type === "buy" ? "text-green-500" : "text-red-500"}>
+                  <TableCell className="capitalize">
+                    {trade.commodity.replace("_", " ")}
+                  </TableCell>
+                  <TableCell
+                    className={
+                      trade.type === "buy" ? "text-green-500" : "text-red-500"
+                    }
+                  >
                     {trade.type.toUpperCase()}
                   </TableCell>
-                  <TableCell className="text-right">${trade.price.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">{trade.quantity.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">${trade.total.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">
+                    {formatPrice(trade.price)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {trade.quantity.toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatPrice(trade.total)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -52,5 +87,5 @@ export function TradeHistory() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

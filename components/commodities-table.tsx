@@ -1,10 +1,17 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, ArrowUpDown, Search } from "lucide-react"
+import { useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, ArrowUpDown, Search } from "lucide-react";
 
 // Mock data for commodities
 const commoditiesData = [
@@ -118,63 +125,69 @@ const commoditiesData = [
     openInterest: 1870,
     expiry: "30 Jun 2025",
   },
-]
+];
 
 export function CommoditiesTable() {
-  const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState<string | null>(null)
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
-  const [page, setPage] = useState(1)
-  const itemsPerPage = 5
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 5;
 
   // Filter commodities based on search term
   const filteredCommodities = commoditiesData.filter(
     (commodity) =>
       commodity.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       commodity.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      commodity.category.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+      commodity.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   // Sort commodities
   const sortedCommodities = [...filteredCommodities].sort((a, b) => {
-    if (!sortBy) return 0
+    if (!sortBy) return 0;
 
-    const aValue = a[sortBy as keyof typeof a]
-    const bValue = b[sortBy as keyof typeof b]
+    const aValue = a[sortBy as keyof typeof a];
+    const bValue = b[sortBy as keyof typeof b];
 
     if (typeof aValue === "number" && typeof bValue === "number") {
-      return sortOrder === "asc" ? aValue - bValue : bValue - aValue
+      return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
     }
 
     if (typeof aValue === "string" && typeof bValue === "string") {
-      return sortOrder === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
+      return sortOrder === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
 
-    return 0
-  })
+    return 0;
+  });
 
   // Paginate commodities
-  const paginatedCommodities = sortedCommodities.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const paginatedCommodities = sortedCommodities.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
-  const totalPages = Math.ceil(filteredCommodities.length / itemsPerPage)
+  const totalPages = Math.ceil(filteredCommodities.length / itemsPerPage);
 
   const handleSort = (column: string) => {
     if (sortBy === column) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
-      setSortBy(column)
-      setSortOrder("asc")
+      setSortBy(column);
+      setSortOrder("asc");
     }
-  }
+  };
 
   const formatPrice = (price: number) => {
+    const conversionRate = 82; // Example conversion rate from USD to INR
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(price)
-  }
+    }).format(price * conversionRate);
+  };
 
   return (
     <div className="space-y-4">
@@ -194,7 +207,10 @@ export function CommoditiesTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
+              <TableHead
+                className="cursor-pointer"
+                onClick={() => handleSort("name")}
+              >
                 <div className="flex items-center">
                   Name
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -202,13 +218,19 @@ export function CommoditiesTable() {
               </TableHead>
               <TableHead>Symbol</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead className="cursor-pointer text-right" onClick={() => handleSort("price")}>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("price")}
+              >
                 <div className="flex items-center justify-end">
                   Price
                   <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer text-right" onClick={() => handleSort("change")}>
+              <TableHead
+                className="cursor-pointer text-right"
+                onClick={() => handleSort("change")}
+              >
                 <div className="flex items-center justify-end">
                   Change %
                   <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -229,17 +251,31 @@ export function CommoditiesTable() {
             ) : (
               paginatedCommodities.map((commodity) => (
                 <TableRow key={commodity.id}>
-                  <TableCell className="font-medium">{commodity.name}</TableCell>
+                  <TableCell className="font-medium">
+                    {commodity.name}
+                  </TableCell>
                   <TableCell>{commodity.symbol}</TableCell>
                   <TableCell>{commodity.category}</TableCell>
-                  <TableCell className="text-right">{formatPrice(commodity.price)}</TableCell>
-                  <TableCell className={`text-right ${commodity.change >= 0 ? "text-green-500" : "text-red-500"}`}>
+                  <TableCell className="text-right">
+                    {formatPrice(commodity.price)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right ${
+                      commodity.change >= 0 ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
                     {commodity.change >= 0 ? "+" : ""}
                     {commodity.change.toFixed(2)}%
                   </TableCell>
-                  <TableCell className="text-right">{commodity.volume.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{commodity.openInterest.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{commodity.expiry}</TableCell>
+                  <TableCell className="text-right">
+                    {commodity.volume.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {commodity.openInterest.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {commodity.expiry}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -248,7 +284,12 @@ export function CommoditiesTable() {
       </div>
 
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+        >
           <ChevronLeft className="mr-2 h-4 w-4" />
           Previous
         </Button>
@@ -266,5 +307,5 @@ export function CommoditiesTable() {
         </Button>
       </div>
     </div>
-  )
+  );
 }
